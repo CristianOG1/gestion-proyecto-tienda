@@ -1,11 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Bars3Icon, XMarkIcon, ShoppingCartIcon } from "@heroicons/react/24/outline"
+import { useCartStore } from "@/lib/cart-store"
 
 export function NavMenu({ categories }: { categories: Category[] }) {
     const [isOpen, setIsOpen] = useState(false)
+    const totalItems = useCartStore((state) => state.getTotalItems())
+
+    // Evita mismatch de hidratación: localStorage solo existe en el cliente,
+    // así que en el primer render del servidor el contador siempre es 0.
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => setMounted(true), [])
 
     const navLinks = [
         { href: "/", label: "Inicio" },
@@ -16,7 +23,7 @@ export function NavMenu({ categories }: { categories: Category[] }) {
       ]
     return (
         <nav className="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-            <div className="container mx-auto flex flex-wrap items-center justify-between py-4">
+            <div className="container mx-auto flex flex-wrap items-center justify-between py-4 px-4">
                 <Link href="/" className="text-xl font-semibold text-gray-900 dark:text-white">
                     MiTienda
                 </Link>
@@ -24,6 +31,11 @@ export function NavMenu({ categories }: { categories: Category[] }) {
                 <div className="flex items-center gap-4 md:order-2">
                     <Link href="/cart" className="relative text-gray-900 dark:text-white">
                         <ShoppingCartIcon className="w-6 h-6" />
+                        {mounted && totalItems > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                {totalItems > 9 ? "9+" : totalItems}
+                            </span>
+                        )}
                     </Link>
 
                     <button
@@ -41,6 +53,7 @@ export function NavMenu({ categories }: { categories: Category[] }) {
                             <li key={link.href}>
                                 <Link
                                     href={link.href}
+                                    onClick={() => setIsOpen(false)}
                                     className="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white dark:hover:bg-gray-700 dark:hover:text-blue-500 md:dark:hover:bg-transparent"
                                 >
                                     {link.label}
