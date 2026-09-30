@@ -47,6 +47,15 @@ jobs:
           STRAPI_HOST: "https://mi-tienda-backend-y9xx.onrender.com"
           STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
 
+      - name: Verificar archivos generados
+        run: |
+          echo "Contenido de web:"
+          ls -la web
+          echo "Contenido de web/.next:"
+          ls -la web/.next || true
+          echo "Contenido de web/.next:"
+          find web/.next -maxdepth 2 -type f | head -30 || true
+
       - name: Subir Artefacto de compilación de Next.js
         uses: actions/upload-artifact@v4
         with:
