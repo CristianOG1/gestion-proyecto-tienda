@@ -8,7 +8,7 @@ export function getProducts (
     { categoryId: string }
 ){
     // CORRECCIÓN: El segundo ? debe ser &
-    return query(`products?locale=es-MX&filters[product_category][slug][$contains]=${categoryId}&populate=images`)
+    return query(`products?filters[product_category][slug][$contains]=${categoryId}&populate=images`)
         .then( res => {
             const { data, meta } = res;
             console.log(data)
