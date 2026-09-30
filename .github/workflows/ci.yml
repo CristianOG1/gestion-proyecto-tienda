@@ -44,7 +44,7 @@ jobs:
           cd web
           pnpm run build
         env:
-          STRAPI_HOST: ${{ secrets.STRAPI_HOST }}
+          STRAPI_HOST: "https://mi-tienda-backend-y9xx.onrender.com"
           STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
 
       - name: Subir Artefacto de compilación de Next.js
