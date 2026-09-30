@@ -19,7 +19,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.17.0'
+          node-version: '24'
 
       - name: Instalar pnpm
         run: npm install -g pnpm
@@ -51,5 +51,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: web-compilado
-          path: web/.next/
+          path: web/.next/**
           retention-days: 5
