@@ -1,0 +1,55 @@
+name: CI/CD Tienda 
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.17.0'
+
+      - name: Instalar pnpm
+        run: npm install -g pnpm
+
+      - name: Instalar dependencias (Strapi)
+        run: |
+          cd backend
+          pnpm install
+
+      - name: Construir proyecto (Strapi)
+        run: |
+          cd backend
+          pnpm run build
+
+      - name: Instalar dependencias (Next.js)
+        run: |
+          cd web
+          pnpm install
+
+      - name: Construir proyecto (Next.js)
+        run: |
+          cd web
+          pnpm run build
+        env:
+          STRAPI_HOST: ${{ secrets.STRAPI_HOST }}
+          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
+
+      - name: Subir Artefacto de compilación de Next.js
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-compilado
+          path: web/.next/
+          retention-days: 5

@@ -1,4 +1,4 @@
-# Tienda Web
+# Tienda Web - Proyecto
 
 ## Proyecto Tienda
 Este es un proyecto de tienda online donde se desarrollo un e-commerce funcional con su propio panel de administración para administrar productos y categorías. Todo está conectado a la nube para que la información y las fotos de los productos se mantengan de forma persistente y segura.
