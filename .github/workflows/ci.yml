@@ -60,6 +60,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: web-compilado
-          path: ./web/.next/
+          path: |
+            ./web/.next/
+            !./web/.next/cache/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 5
