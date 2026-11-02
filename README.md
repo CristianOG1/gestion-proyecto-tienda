@@ -43,13 +43,13 @@ pnpm install
 Para trabajar en modo desarrollo, necesitas tener ambas partes del proyecto en terminales separadas:
 
 **Levantar el Backend (Strapi):**
-\```bash
+```bash
 cd backend
 pnpm run develop
-\```
+```
 
 **Levantar el Frontend (Next.js):**
-\```bash
+```bash
 cd web
 pnpm run dev
-\```
+```
