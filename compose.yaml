@@ -1,0 +1,25 @@
+services:
+  web:
+    build: 
+      context: ./web
+      args:
+        STRAPI_HOST: https://mi-tienda-backend-y9xx.onrender.com
+      secrets:
+        - strapi_token
+    ports:
+      - "3000:3000"
+    environment:
+      STRAPI_HOST: http://backend:1337
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    ports:
+      - "1337:1337"
+    env_file:
+      - ./backend/.env
+
+secrets:
+  strapi_token:
+    environment: "STRAPI_TOKEN"

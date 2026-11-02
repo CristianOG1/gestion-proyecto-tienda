@@ -1,17 +1,21 @@
+
+# syntax=docker/dockerfile:1.7
 FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN npm install -g pnpm && pnpm install
 
 COPY . .
 
 ENV NODE_ENV=production
-ENV STRAPI_HOST="https://mi-tienda-backend-y9xx.onrender.com"
+ARG STRAPI_HOST
+ENV STRAPI_HOST=${STRAPI_HOST}
 
-RUN pnpm run build
+RUN --mount=type=secret,id=strapi_token,env=STRAPI_TOKEN \
+    pnpm run build
 
 EXPOSE 3000
 

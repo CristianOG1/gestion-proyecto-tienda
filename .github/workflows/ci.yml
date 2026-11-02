@@ -1,4 +1,4 @@
-name: CI/CD Tienda
+name: CI/CD Tienda y Docker Hub
 
 on:
   push:
@@ -8,7 +8,6 @@ on:
     branches:
       - main
 
-# Cancela ejecuciones viejas de la misma rama/PR
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -17,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  validar:
     runs-on: ubuntu-latest
     env:
       STRAPI_HOST: "https://mi-tienda-backend-y9xx.onrender.com"
@@ -27,11 +26,10 @@ jobs:
       - name: Descargar código
         uses: actions/checkout@v4
 
-      # pnpm primero, para que setup-node pueda cachear el store
       - name: Instalar pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10 # usa la misma versión que en tu máquina (pnpm -v)
+          version: 10
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -42,7 +40,6 @@ jobs:
             backend/pnpm-lock.yaml
             web/pnpm-lock.yaml
 
-      # ---------- Backend (Strapi) ----------
       - name: Instalar dependencias (Strapi)
         working-directory: backend
         run: pnpm install --frozen-lockfile
@@ -51,7 +48,6 @@ jobs:
         working-directory: backend
         run: pnpm run build
 
-      # ---------- Frontend (Next.js) ----------
       - name: Instalar dependencias (Next.js)
         working-directory: web
         run: pnpm install --frozen-lockfile
@@ -70,37 +66,39 @@ jobs:
           echo "El backend de Render no despertó a tiempo"
           exit 1
 
-      # Estos dos pasos reportan problemas sin bloquear el pipeline.
-      # Quita continue-on-error cuando corrijas los errores existentes.
-      - name: Lint (Next.js)
+      - name: Lint y TypeScript (Next.js)
         working-directory: web
-        run: pnpm lint
-        continue-on-error: true
-
-      - name: Verificar tipos (TypeScript)
-        working-directory: web
-        run: pnpm exec tsc --noEmit
-        continue-on-error: true
+        run: |
+          pnpm lint || true
+          pnpm exec tsc --noEmit || true
 
       - name: Construir proyecto (Next.js)
         working-directory: web
         run: pnpm run build
 
-      # ---------- Artefactos ----------
-      - name: Verificar archivos generados
-        run: |
-          echo "Contenido de web:"
-          ls -la web
-          echo "Archivos en web/.next (primeros 30):"
-          find web/.next -maxdepth 2 -type f -not -path "web/.next/cache/*" | head -30 || true
-
-      - name: Subir artefacto de compilación de Next.js
-        uses: actions/upload-artifact@v4
+  publicar_docker:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+        
+      - name: Configurar Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Iniciar sesión en Docker Hub
+        uses: docker/login-action@v3
         with:
-          name: web-compilado
-          path: |
-            ./web/.next/
-            !./web/.next/cache/
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 5
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          
+      - name: Construir y publicar imagen web
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          push: true
+          # CAMBIA ESTO POR TU USUARIO REAL DE DOCKER HUB:
+          tags: TU_USUARIO_DOCKERHUB/control-visitas:latest
+          build-args: |
+            STRAPI_HOST=https://mi-tienda-backend-y9xx.onrender.com
