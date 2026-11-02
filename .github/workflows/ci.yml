@@ -102,3 +102,6 @@ jobs:
           tags: cris28og/control-visitas:latest
           build-args: |
             STRAPI_HOST=https://mi-tienda-backend-y9xx.onrender.com
+          # AGREGA ESTAS DOS LÍNEAS PARA PASAR EL TOKEN A DOCKER:
+          secrets: |
+            strapi_token=${{ secrets.STRAPI_TOKEN }}
