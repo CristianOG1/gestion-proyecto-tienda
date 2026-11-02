@@ -99,6 +99,6 @@ jobs:
           context: ./web
           push: true
           # CAMBIA ESTO POR TU USUARIO REAL DE DOCKER HUB:
-          tags: TU_USUARIO_DOCKERHUB/control-visitas:latest
+          tags: cris28og/control-visitas:latest
           build-args: |
             STRAPI_HOST=https://mi-tienda-backend-y9xx.onrender.com
