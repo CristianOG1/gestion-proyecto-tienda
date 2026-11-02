@@ -1,3 +1,4 @@
+import { getImageUrl } from "./image-url";
 import { query } from "./strapi";
 
 const { STRAPI_HOST } = process.env
@@ -11,7 +12,7 @@ export function getHomeInfo() {
         }
 
         const { title, description, cover } = res.data
-        const image = `${STRAPI_HOST}${cover.url}`
+        const image = getImageUrl(cover?.url)
         return {title, description, image}
     })
 }

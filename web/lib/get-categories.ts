@@ -1,3 +1,4 @@
+import { getImageUrl } from "./image-url";
 import { query } from "./strapi";
 
 const { STRAPI_HOST } = process.env
@@ -8,7 +9,7 @@ export function getCategories () {
         if (!res.data) return [];
         return res.data.map(category => {
             const { name, slug, description, image:rawImage} = category
-            const image = `${STRAPI_HOST}${rawImage.url}`
+            const image = getImageUrl(rawImage?.url)
             return {name, slug, description, image}
         })
     })

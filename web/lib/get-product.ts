@@ -1,3 +1,4 @@
+import { getImageUrl } from "./image-url";
 import { query } from "./strapi";
 
 // CORRECCIÓN 1: No desestructurar variables de entorno en Next.js
@@ -23,7 +24,7 @@ export function getProducts (
                 let image = null;
                 if (rawImages && rawImages.length > 0 && rawImages[0].url) {
                     // CORRECCIÓN 3: Quitar la barra inclinada extra porque url ya la incluye ("/uploads/...")
-                    image = `${STRAPI_HOST}${rawImages[0].url}`;
+                    image = getImageUrl(rawImages[0].url);
                 }
                 
                 return { name, slug, description, image, price};
