@@ -8,55 +8,93 @@ on:
     branches:
       - main
 
+# Cancela ejecuciones viejas de la misma rama/PR
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      STRAPI_HOST: "https://mi-tienda-backend-y9xx.onrender.com"
+      STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
 
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
 
+      # pnpm primero, para que setup-node pueda cachear el store
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10 # usa la misma versión que en tu máquina (pnpm -v)
+
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: pnpm
+          cache-dependency-path: |
+            backend/pnpm-lock.yaml
+            web/pnpm-lock.yaml
 
-      - name: Instalar pnpm
-        run: npm install -g pnpm
-
+      # ---------- Backend (Strapi) ----------
       - name: Instalar dependencias (Strapi)
-        run: |
-          cd backend
-          pnpm install
+        working-directory: backend
+        run: pnpm install --frozen-lockfile
 
       - name: Construir proyecto (Strapi)
-        run: |
-          cd backend
-          pnpm run build
+        working-directory: backend
+        run: pnpm run build
 
+      # ---------- Frontend (Next.js) ----------
       - name: Instalar dependencias (Next.js)
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Despertar backend en Render
         run: |
-          cd web
-          pnpm install
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$STRAPI_HOST/_health" || true)
+            echo "Intento $i: HTTP $code"
+            if [ "$code" = "200" ] || [ "$code" = "204" ]; then
+              echo "Backend despierto"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "El backend de Render no despertó a tiempo"
+          exit 1
+
+      # Estos dos pasos reportan problemas sin bloquear el pipeline.
+      # Quita continue-on-error cuando corrijas los errores existentes.
+      - name: Lint (Next.js)
+        working-directory: web
+        run: pnpm lint
+        continue-on-error: true
+
+      - name: Verificar tipos (TypeScript)
+        working-directory: web
+        run: pnpm exec tsc --noEmit
+        continue-on-error: true
 
       - name: Construir proyecto (Next.js)
-        run: |
-          cd web
-          pnpm run build
-        env:
-          STRAPI_HOST: "https://mi-tienda-backend-y9xx.onrender.com"
-          STRAPI_TOKEN: ${{ secrets.STRAPI_TOKEN }}
+        working-directory: web
+        run: pnpm run build
 
+      # ---------- Artefactos ----------
       - name: Verificar archivos generados
         run: |
           echo "Contenido de web:"
           ls -la web
-          echo "Contenido de web/.next:"
-          ls -la web/.next || true
-          echo "Contenido de web/.next:"
-          find web/.next -maxdepth 2 -type f | head -30 || true
+          echo "Archivos en web/.next (primeros 30):"
+          find web/.next -maxdepth 2 -type f -not -path "web/.next/cache/*" | head -30 || true
 
-      - name: Subir Artefacto de compilación de Next.js
+      - name: Subir artefacto de compilación de Next.js
         uses: actions/upload-artifact@v4
         with:
           name: web-compilado
