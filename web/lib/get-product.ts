@@ -1,36 +1,40 @@
 import { getImageUrl } from "./image-url";
 import { query } from "./strapi";
 
-// CORRECCIÓN 1: No desestructurar variables de entorno en Next.js
-const STRAPI_HOST = process.env.STRAPI_HOST;
+type StrapiProduct = {
+    documentId: string
+    name: string
+    slug: string
+    description: unknown
+    price: number
+    images?: { url: string }[]
+}
 
-export function getProducts (
-    { categoryId }:
-    { categoryId: string }
-){
-    // CORRECCIÓN: El segundo ? debe ser &
-    return query(`products?filters[product_category][slug][$contains]=${categoryId}&populate=images`)
-        .then( res => {
-            const { data, meta } = res;
-            console.log(data)
+const toProduct = ({ documentId, name, slug, description, price, images }: StrapiProduct) => ({
+    id: documentId,
+    name,
+    slug,
+    description,
+    price,
+    image: getImageUrl(images?.[0]?.url),
+})
 
-            // SEGURIDAD: Prevenir errores si Strapi no devuelve "data"
-            if (!data) return { products: [], pagination: null };
+export type ProductPagination = { page: number; pageSize: number; pageCount: number; total: number }
 
-            const products = data.map(product => {
-                const { name, slug, description, images: rawImages, price} = product;
-                
-                // SEGURIDAD: Verificar que el arreglo de imágenes exista y tenga al menos una foto
-                let image = null;
-                if (rawImages && rawImages.length > 0 && rawImages[0].url) {
-                    // CORRECCIÓN 3: Quitar la barra inclinada extra porque url ya la incluye ("/uploads/...")
-                    image = getImageUrl(rawImages[0].url);
-                }
-                
-                return { name, slug, description, image, price};
-            })
-
-            // SEGURIDAD: Usar el operador ? por si "meta" llega vacío
-            return { products, pagination: meta?.pagination };
+export function getProducts({ categoryId, page = 1, sort }: { categoryId: string; page?: number; sort?: "price:asc" }) {
+    const sortParam = sort ? `&sort=${sort}` : ""
+    return query(`products?filters[product_category][slug][$contains]=${categoryId}&populate=images&pagination[page]=${page}&pagination[pageSize]=12${sortParam}`)
+        .then(res => {
+            const { data, meta } = res
+            if (!data) return { products: [], pagination: null }
+            return {
+                products: (data as StrapiProduct[]).map(toProduct),
+                pagination: (meta?.pagination ?? null) as ProductPagination | null,
+            }
         })
+}
+
+export function getFeaturedProducts() {
+    return query("products?filters[isActive][$eq]=true&sort=createdAt:desc&pagination[pageSize]=8&populate=images")
+        .then(res => ((res.data ?? []) as StrapiProduct[]).map(toProduct))
 }

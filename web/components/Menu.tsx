@@ -1,21 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { Bars3Icon, XMarkIcon, ShoppingCartIcon } from "@heroicons/react/24/outline"
 import { useCartStore } from "@/lib/cart-store"
 
+type Category = { slug: string; name: string }
+
+const emptySubscribe = () => () => {}
+
 export function NavMenu({ categories }: { categories: Category[] }) {
     const [isOpen, setIsOpen] = useState(false)
     const totalItems = useCartStore((state) => state.getTotalItems())
-
-    // Evita mismatch de hidratación: localStorage solo existe en el cliente,
-    // así que en el primer render del servidor el contador siempre es 0.
-    const [mounted, setMounted] = useState(false)
-    useEffect(() => setMounted(true), [])
+    const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
 
     const navLinks = [
         { href: "/", label: "Inicio" },
+        { href: "/categorias", label: "Categorías" },
         ...categories.map((c) => ({
           href: `/categories/${c.slug}`,
           label: c.name,
@@ -29,17 +30,18 @@ export function NavMenu({ categories }: { categories: Category[] }) {
                 </Link>
 
                 <div className="flex items-center gap-4 md:order-2">
-                    <Link href="/cart" className="relative text-gray-900 dark:text-white">
+                    <Link href="/cart" aria-label="Carrito de compras" className="relative text-gray-900 dark:text-white">
                         <ShoppingCartIcon className="w-6 h-6" />
-                        {mounted && totalItems > 0 && (
+                        {mounted && totalItems > 0 ? (
                             <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                                 {totalItems > 9 ? "9+" : totalItems}
                             </span>
-                        )}
+                        ) : null}
                     </Link>
 
                     <button
                         type="button"
+                        aria-label="Abrir menú"
                         onClick={() => setIsOpen(!isOpen)}
                         className="inline-flex items-center p-2 w-10 h-10 justify-center text-gray-500 rounded-lg md:hidden hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
                     >

@@ -1,19 +1,26 @@
+import { cache } from "react";
 import { getImageUrl } from "./image-url";
 import { query } from "./strapi";
 
-const { STRAPI_HOST } = process.env
+type StrapiCategory = {
+    name: string
+    slug: string
+    description: string
+    image?: { url: string } | null
+}
 
-export function getCategories () {
-    return query("product-categories?fields[0]=name&fields[1]=slug&fields[2]=description&populate[image][fields][0]=url")
-    .then(res => {
-        if (!res.data) {
-            console.error("Strapi devolvió un error:", res.error);
-            return [];
-        }
-        return res.data.map(category => {
-            const { name, slug, description, image:rawImage} = category
-            const image = getImageUrl(rawImage?.url)
-            return {name, slug, description, image}
+export const getCategories = cache(() =>
+    query("product-categories?fields[0]=name&fields[1]=slug&fields[2]=description&populate[image][fields][0]=url")
+        .then(res => {
+            if (!res.data) {
+                console.error("Strapi devolvió un error:", res.error);
+                return [];
+            }
+            return (res.data as StrapiCategory[]).map(({ name, slug, description, image: rawImage }) => ({
+                name,
+                slug,
+                description,
+                image: getImageUrl(rawImage?.url),
+            }));
         })
-    })
-}   
+);

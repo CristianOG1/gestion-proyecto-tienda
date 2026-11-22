@@ -11,3 +11,8 @@ obj/
 .idea/
 *.log
 *.tar.gz
+.agents
+.agent
+.impeccable
+.opencode
+.codegraph

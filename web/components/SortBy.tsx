@@ -1,14 +1,23 @@
-export const SortBy = () => {
+import Link from "next/link"
+
+const active = "rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+const idle = "rounded-full px-5 py-2 text-sm font-medium text-gray-200 transition hover:bg-gray-800"
+
+export const SortBy = ({ sort }: { sort?: "price" }) => {
     return (
         <div className="flex items-center gap-2 rounded-full bg-[#111827] p-1 w-fit">
-            <button
-                className="rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+            <Link
+                href="?"
+                aria-current={!sort ? "true" : undefined}
+                className={!sort ? active : idle}
             >
                 Default
-            </button>
+            </Link>
 
-            <button
-                className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium text-gray-200 transition hover:bg-gray-800"
+            <Link
+                href="?sort=price"
+                aria-current={sort === "price" ? "true" : undefined}
+                className={`flex items-center gap-2 ${sort === "price" ? active : idle}`}
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -26,7 +35,7 @@ export const SortBy = () => {
                 </svg>
 
                 By price
-            </button>
+            </Link>
         </div>
     );
 };

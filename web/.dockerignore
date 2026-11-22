@@ -2,4 +2,10 @@ node_modules
 .next
 .git
 .env
+.env*
 README.md
+.agents
+.agent
+.impeccable
+.opencode
+.codegraph
