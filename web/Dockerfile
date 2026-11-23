@@ -1,22 +1,29 @@
-
 # syntax=docker/dockerfile:1.7
-FROM node:20-alpine
-
+FROM node:20-alpine AS base
 WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
 
+FROM base AS deps
+RUN npm install -g pnpm@10
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
-RUN npm install -g pnpm && pnpm install
-
+FROM base AS builder
+RUN npm install -g pnpm@10
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
 ENV NODE_ENV=production
 ARG STRAPI_HOST
 ENV STRAPI_HOST=${STRAPI_HOST}
+RUN --mount=type=secret,id=strapi_token \
+    STRAPI_TOKEN=$(cat /run/secrets/strapi_token) pnpm run build
 
-RUN --mount=type=secret,id=strapi_token,env=STRAPI_TOKEN \
-    pnpm run build
-
+FROM base AS runner
+ENV NODE_ENV=production PORT=3000 HOSTNAME="0.0.0.0"
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+USER nextjs
 EXPOSE 3000
-
-CMD ["pnpm", "start"]
+CMD ["node", "server.js"]

@@ -9,6 +9,7 @@ import { Hero } from "../components/Hero";
 import { Categories } from "@/components/Categories";
 import { FeaturedProducts } from "@/components/FeaturedProducts";
 
+export const dynamic = "force-dynamic";
 export const metadata = {
   title: "MiduShop",
   description: "Next.js + Strapi",

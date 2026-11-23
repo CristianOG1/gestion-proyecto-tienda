@@ -3,6 +3,7 @@ import { getCategories } from "@/lib/get-categories";
 import { getImageUrl } from "@/lib/image-url";
 import { HeroCategorias } from "@/components/HeroCategorias";
 
+export const dynamic = "force-dynamic";
 export const metadata = {
     title: "Categorías | MiTienda",
     description: "Explora todas nuestras categorías de productos.",
