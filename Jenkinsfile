@@ -19,7 +19,7 @@ pipeline {
         stage('2. Verificar y ejecutar pruebas') {
             steps {
                 sh '''
-                    docker run --rm -v "$(pwd)/web:/app" -w /app node:20-alpine sh -c "
+                    docker run --rm --volumes-from jenkins-devops -w "${WORKSPACE}/web" node:20-alpine sh -c "
                         npm install -g pnpm@10 &&
                         pnpm install --frozen-lockfile &&
                         pnpm lint &&
