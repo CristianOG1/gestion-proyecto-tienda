@@ -5,51 +5,70 @@ Dos proyectos pnpm independientes, sin manifiesto ni workspace en la raíz. Ejec
 ## Comandos
 
 ```bash
-cd backend && pnpm install && pnpm develop        # Strapi, puerto 8888
-cd web     && pnpm install && pnpm exec next dev   # Next.js, puerto 3000
-cd web     && pnpm build
+cd backend && pnpm install && pnpm develop                          # Strapi, puerto 8888
+cd web     && pnpm install && pnpm dev                              # Next.js, puerto 3000
 cd web     && pnpm lint
-cd web     && pnpm exec tsc --noEmit
-cd backend && pnpm build                           # panel de administración
+cd web     && pnpm exec next typegen && pnpm exec tsc --noEmit
+cd web     && pnpm test                                             # Vitest
+cd web     && pnpm build
+cd backend && pnpm build                                            # panel de administración
 ```
 
-- `web/package.json` tiene `"dev": "nex dev"` (ese binario no existe): `pnpm dev` falla. Usa `pnpm exec next dev` o corrige el script a `next dev`.
-- No hay runner de pruebas en ninguno de los dos proyectos.
-- CI (`.github/workflows/ci.yml`): pnpm 10 + Node 24, build de `backend`, instalación de `web` con `--frozen-lockfile` (si cambias dependencias, commitea el lockfile), despierta Render con hasta 10 `GET $STRAPI_HOST/_health` cada 10 s, luego `lint` y `tsc --noEmit` con `continue-on-error`, y build de `web`. Bloquean el pipeline los builds y el warm-up de Render; lint/tipos no. El workflow fija pnpm 10 aunque `web/package.json` declara `packageManager: pnpm@12.3.4`, y `STRAPI_HOST` está fijo en el YAML mientras `STRAPI_TOKEN` viene de `secrets`.
+- `web/` usa Vitest (`pnpm test`); `backend/` no tiene runner de pruebas.
 - `next dev` reescribe el bloque de reglas de `web/AGENTS.md`; consérvalo en los diffs. `web/CLAUDE.md` solo importa ese archivo.
+
+## Configuración de Next.js (`web/`)
+
+- `web/next.config.ts` usa `output: process.env.VERCEL ? undefined : "standalone"` para soportar tanto el build ligero en Docker como despliegues nativos en Vercel. Validación estricta de tipos activa (sin `ignoreBuildErrors`).
+- Las páginas principales (`web/app/page.tsx`, `web/app/categorias/page.tsx`) usan `export const dynamic = "force-dynamic"` y `web/lib/strapi.ts` usa `cache: "no-store"` para consultar Strapi en tiempo real y evitar HTML cacheado del build.
+- Gestor de paquetes fijado en `pnpm@10` (`web/package.json`, `web/Dockerfile` y CI). Si hay conflictos de lockfile, regéneralo con `npx pnpm@10 install`.
 
 ## Entorno
 
-- `web/.env.local`: `STRAPI_HOST` y `STRAPI_TOKEN`. Se leen solo del lado del servidor, no hay variables `NEXT_PUBLIC_*`; todas las peticiones pasan por `lib/strapi.ts#query`.
-- El `backend/.env` local puede apuntar a PostgreSQL (`DATABASE_CLIENT=postgres`), aunque el default del código es SQLite (`config/database.ts`, archivo `.tmp/data.db`). Para usar SQLite: `DATABASE_CLIENT=sqlite` y `DATABASE_FILENAME`.
-- `backend/.env.example` está desactualizado (dice `PORT=1337` y no incluye variables de base de datos ni Cloudinary); no lo uses como fuente de verdad.
-- Cloudinary es el provider de upload (`config/plugins.ts`) y requiere `CLOUDINARY_NAME`, `CLOUDINARY_KEY` y `CLOUDINARY_SECRET`. Las subidas nuevas van a Cloudinary; las antiguas siguen en `backend/public/uploads`.
+- `web/.env.local` (ver `web/.env.example`): `STRAPI_HOST`, `STRAPI_TOKEN` y `STRIPE_SECRET_KEY`. Todas son variables solo de servidor (no hay `NEXT_PUBLIC_*`); las peticiones a Strapi pasan por `lib/strapi.ts#query` y Stripe se instancia dentro del handler `POST /api/checkout` (nunca a nivel de módulo).
+- `backend/.env` (ver `backend/.env.example`): `PORT=8888`, `DATABASE_CLIENT` (`sqlite` por defecto en `.tmp/data.db`, o `postgres`), credenciales de Cloudinary (`CLOUDINARY_NAME`, `CLOUDINARY_KEY`, `CLOUDINARY_SECRET`) y llaves de Strapi.
 - Usa `lib/image-url.ts#getImageUrl` para media: respeta URLs absolutas de Cloudinary y completa las relativas `/uploads/...`. No concatenes `${STRAPI_HOST}${url}` a mano.
 - `next/image` solo permite `res.cloudinary.com`; el catálogo usa `<img>`. Agrega el host de Render antes de migrar a `<Image>`.
 
 ## Arquitectura
 
-- Next.js App Router con tres rutas: `/` (`app/page.tsx`), `/cart` (`app/cart/page.tsx`, cliente) y `/categories/[categoryId]` (`app/categories/[categoryId]/page.tsx`). El parámetro `categoryId` es el **slug** de la categoría.
-- `app/layout.tsx` es async: llama a `getCategories` en cada render y pasa el resultado a `NavMenu`.
-- `getHomeInfo` vive en `lib/get-home-into.ts` (typo histórico del nombre). El import válido es `@/lib/get-home-into`; no renombres el archivo sin actualizar `Hero.tsx`.
-- El carrito es estado de cliente: `lib/cart-store.ts` (Zustand + `localStorage`), sin llamadas a Strapi.
+- Next.js App Router: `/` (`app/page.tsx`), `/categorias` (`app/categorias/page.tsx`), `/categories/[categoryId]` (`app/categories/[categoryId]/page.tsx`, `categoryId` es el **slug**), `/cart` (`app/cart/page.tsx`, cliente), `/pago/exito`, `/pago/cancelado` y `POST /api/checkout` (`app/api/checkout/route.ts`).
+- `app/layout.tsx` es async: llama a `getCategories` (envuelta en `cache()` de React para deduplicar entre `layout`, `Hero`, `Categories` y `Footer`).
+- `getHomeInfo` vive en `lib/get-home-into.ts` (typo histórico). El import válido es `@/lib/get-home-into`; no renombres el archivo sin actualizar `Hero.tsx`.
+- El carrito es estado de cliente: `lib/cart-store.ts` (Zustand + `localStorage`), sincronizado en `NavMenu` y `CartPage` con `useSyncExternalStore` para evitar hydration mismatch.
 
-| Página | Componentes | Función de `lib/` | Endpoint / content type |
+| Ruta | Componentes principales | Función de `lib/` | Endpoint / content type |
 | --- | --- | --- | --- |
-| `/` | `Hero`, `Categories` | `getHomeInfo`, `getCategories` | `GET /api/home?populate=cover` (`home`), `GET /api/product-categories?...` (`product-category`) |
-| `/categories/[categoryId]` | `SortBy`, `Pagination`, `AddToCartButton` | `getProducts` | `GET /api/products?filters[product_category][slug][$contains]=...&populate=images` (`product`) |
-| `/cart` | `CartPage` | `useCartStore` | Ninguno |
+| `/` | `Hero`, `Categories`, `FeaturedProducts` | `getHomeInfo`, `getCategories`, `getFeaturedProducts` | `home`, `product-category`, `product` (`isActive=true`) |
+| `/categorias` | `HeroCategorias` | `getCategories` | `product-category` |
+| `/categories/[categoryId]` | `HeroCategoria`, `SortBy`, `Pagination`, `AddToCartButton` | `getProducts`, `getCategories` | `products` (`pagination[page]`, `sort=price:asc`) |
+| `/cart` | `CartPage` | `useCartStore`, `getImageUrl` | `POST /api/checkout` (Stripe Checkout MXN) |
 
-- Backend Strapi 5: content types en `src/api/<nombre>/content-types/<nombre>/schema.json`, con routers/controllers/services basados en `factories`. `types/generated/` está versionado; regenéralo junto con los cambios de esquema.
-- `config/api.ts` activa `strictParams` y `strictRelations`: parámetros desconocidos devuelven error, y REST pagina 25 por defecto (máximo 100). Las respuestas vienen aplanadas (`data[].name`, no `attributes.name`).
-- Solo `product`, `product-category` y `home` se usan en la tienda. `about`, `article`, `author`, `category` (distinto de `product-category`) y `global` son plantilla de blog sin uso, igual que los datos de `backend/data/data.json` y `seed:example`.
+- Backend Strapi 5: content types en `src/api/<nombre>/content-types/<nombre>/schema.json`, con `types/generated/` versionado.
+- `config/api.ts` activa `strictParams` y `strictRelations`: parámetros desconocidos devuelven error; las respuestas vienen aplanadas (`data[].name`, `documentId`).
+- Solo `product`, `product-category` y `home` se usan en la tienda. `about`, `article`, `author`, `category` y `global` son plantilla de blog sin uso.
 
-## Deuda conocida
+## Docker y Docker Compose (`web/Dockerfile`, `compose.yaml`)
 
-- `pnpm lint` falla en `components/Menu.tsx` (`react-hooks/set-state-in-effect`) y `tsc --noEmit` reporta errores previos (implicit `any`, `Category` sin definir, props de `Pagination`, `image` nullable en `Hero`). `next.config.ts` ignora errores de TypeScript y el CI no bloquea lint/tipos; no asumas que son nuevos.
-- `Pagination` no acepta props (la página le pasa `pagination`) y sus botones no hacen nada; `SortBy` tampoco tiene manejadores. Son UI inerte.
-- `getProducts` no devuelve `id`, pero `CategoryPage` pasa `product.id` a `AddToCartButton`: el carrito identifica productos por `undefined` y puede fusionar artículos distintos. También queda un `console.log(data)`.
-- `layout.tsx` y `Categories.tsx` llaman a `getCategories` por separado en el mismo request.
+- `web/Dockerfile` usa multi-stage build con `node:20-alpine` (`deps -> builder -> runner`) y lee el secreto en build con `RUN --mount=type=secret,id=strapi_token STRAPI_TOKEN=$(cat /run/secrets/strapi_token) pnpm run build` (compatible con `dockerfile:1.7`).
+- `compose.yaml` levanta `web` (puerto `3000`) y `backend` (puerto `8888` con healthcheck en `/_health`). `web` se conecta al backend local mediante `STRAPI_HOST=http://backend:8888` y carga `web/.env.local`.
+- **Gotcha:** `docker run --env-file` no elimina comillas dobles, por lo que `web/.env.local` y `backend/.env` nunca deben llevar comillas en sus valores.
+
+## GitHub Actions (`.github/workflows/ci.yml`)
+
+- Node `20` + `pnpm` `10` con `--frozen-lockfile` (commitea el lockfile al cambiar dependencias).
+- Antes de compilar `web`, despierta el backend de Render haciendo polling a `/_health`.
+- En la validación de TypeScript, ejecutar siempre `pnpm exec next typegen` antes de `pnpm exec tsc --noEmit` para generar `PageProps` y `LayoutProps` en `.next/types/`. `lint`, `tsc` y `pnpm test` son bloqueantes.
+- Al hacer push a `main`, construye y publica la imagen de `web` en Docker Hub usando BuildKit secrets (`STRAPI_TOKEN` desde `${{ secrets.STRAPI_TOKEN }}`).
+
+## Jenkins (`Jenkinsfile` y `Dockerfile.jenkins`)
+
+- Jenkins corre contenerizado (`jenkins-devops`) con Docker CLI instalado y `/var/run/docker.sock` montado (puerto local `8081:8080`).
+- `Jenkinsfile` en la raíz define 4 etapas:
+  1. Checkout desde GitHub.
+  2. Lint y pruebas unitarias en `node:20-alpine` usando `--volumes-from jenkins-devops -w "${WORKSPACE}/web"`.
+  3. Build de imagen Docker con `DOCKER_BUILDKIT=1` y secreto `STRAPI_TOKEN` desde credenciales de Jenkins.
+  4. Despliegue y verificación del contenedor en el puerto `3001`.
 
 <!-- CODEGRAPH_START -->
 ## CodeGraph
