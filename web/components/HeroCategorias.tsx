@@ -28,3 +28,9 @@ export function HeroCategorias({ totalCategorias }: { totalCategorias: number })
         </section>
     );
 }
+
+
+
+
+
+
