@@ -65,11 +65,11 @@ jobs:
           done
           echo "El backend de Render no despertó a tiempo"
           exit 1
-
       - name: Lint y TypeScript (Next.js)
         working-directory: web
         run: |
           pnpm lint
+          pnpm exec next typegen
           pnpm exec tsc --noEmit
 
       - name: Pruebas unitarias (Next.js)
