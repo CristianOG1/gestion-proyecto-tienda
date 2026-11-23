@@ -1,7 +1,7 @@
 # Tienda Web - Proyecto
 
 ## Proyecto Tienda
-Este es un proyecto de tienda online donde se desarrollo un e-commerce funcional con su propio panel de administración para administrar productos y categorías. Todo está conectado a la nube para que la información y las fotos de los productos se mantengan de forma persistente y segura.
+E-commerce funcional con panel de administración para gestionar productos y categorías, carrito persistente, pagos con Stripe Checkout en modo prueba e imágenes alojadas en Cloudinary.
 
 ## Integrantes
 * Kevin David Gonzalez Franco
@@ -12,44 +12,73 @@ Este es un proyecto de tienda online donde se desarrollo un e-commerce funcional
 
 ## Tecnologías utilizadas
 **Frontend:**
-* Next.js y React
-* TypeScript
+* Next.js, React y TypeScript
+* Zustand (estado del carrito)
+* Vitest (pruebas unitarias)
+* Stripe Checkout (modo prueba)
 
 **Backend y Datos:**
 * Strapi v5
-* SQLite para la base de datos local de imagenes y datos
+* PostgreSQL / SQLite
+* Cloudinary (almacenamiento de imágenes)
+
+**Infraestructura y CI/CD:**
+* Docker y Docker Compose
+* GitHub Actions
 
 ## Arquitectura y microservicios
-El proyecto funciona bajo una arquitectura separada:
-1. **Frontend (Next.js):** Se encarga de la interfaz visual y la experiencia del usuario. Consume los datos haciendo peticiones a la API.
-2. **Backend (Strapi):** Gestiona la lógica de negocio, la seguridad (tokens) y el panel de administrador.
+1. **Frontend (`web/`, puerto `3000`):** interfaz en Next.js App Router, carrito en cliente y API route `/api/checkout` para Stripe.
+2. **Backend (`backend/`, puerto `8888`):** Strapi v5 con API REST, panel de administración y gestión de medios en Cloudinary.
 
 ## Requisitos e instalación
-Para correr este proyecto en tu computadora necesitas tener instalado [Node.js](https://nodejs.org/) y el gestor de paquetes `pnpm`.
+Necesitas [Node.js 20](https://nodejs.org/) y `pnpm` (v10) — o Docker + Docker Compose.
 
-1. Clona este repositorio:
-`
-git clone https://github.com/CristianOG1/proyecto-tienda.git
-`
+1. Clona el repositorio:
+```bash
+git clone https://github.com/CristianOG1/gestion-proyecto-tienda.git
+cd gestion-proyecto-tienda
+```
 
-2. Instala las dependencias en las carpetas correspondientes:
-`Entra al frontend y backend para instalar
-pnpm install
-`
+2. Instala dependencias en cada proyecto (no hay workspace en la raíz):
+```bash
+cd backend && pnpm install
+cd ../web && pnpm install
+```
 
-3. Crea tus archivos `.env` locales para conectar tu propia base de datos.
+3. Configura las variables de entorno copiando los archivos de ejemplo:
+- `web/.env.local` (desde `web/.env.example`):
+  - `STRAPI_HOST`: URL del backend (ej. `http://localhost:8888`)
+  - `STRAPI_TOKEN`: API token de lectura de Strapi
+  - `STRIPE_SECRET_KEY`: clave secreta de prueba de Stripe (`sk_test_...`)
+- `backend/.env` (desde `backend/.env.example`):
+  - `PORT`: `8888`
+  - `DATABASE_CLIENT`: `sqlite` o `postgres` (más `DATABASE_FILENAME` o `DATABASE_URL` / credenciales)
+  - `CLOUDINARY_NAME`, `CLOUDINARY_KEY`, `CLOUDINARY_SECRET`
+  - Claves de seguridad de Strapi (`APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER_TOKEN_SALT`, `JWT_SECRET`, `ENCRYPTION_KEY`)
 
-## Instrucciones de ejecución
-Para trabajar en modo desarrollo, necesitas tener ambas partes del proyecto en terminales separadas:
+## Ejecución en desarrollo local
+Levanta ambos servicios en terminales separadas:
 
-**Levantar el Backend (Strapi):**
+**Backend (Strapi — http://localhost:8888):**
 ```bash
 cd backend
-pnpm run develop
+pnpm develop
 ```
 
-**Levantar el Frontend (Next.js):**
+**Frontend (Next.js — http://localhost:3000):**
 ```bash
 cd web
-pnpm run dev
+pnpm dev
 ```
+
+## Ejecución con Docker Compose
+Con `web/.env.local`, `backend/.env` y `STRAPI_TOKEN` exportado en tu entorno:
+
+```bash
+docker compose up --build -d
+docker compose ps
+docker compose down
+```
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8888`
