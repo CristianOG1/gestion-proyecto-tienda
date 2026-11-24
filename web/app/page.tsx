@@ -11,8 +11,8 @@ import { FeaturedProducts } from "@/components/FeaturedProducts";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "MiduShop",
-  description: "Next.js + Strapi",
+  title: "Inicio | MiTienda",
+  description: "Compra en línea tus productos favoritos con pago seguro y envío a todo el país.",
 };
 
 const BENEFITS = [
