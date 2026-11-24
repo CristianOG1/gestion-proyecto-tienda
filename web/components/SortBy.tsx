@@ -11,7 +11,7 @@ export const SortBy = ({ sort }: { sort?: "price" }) => {
                 aria-current={!sort ? "true" : undefined}
                 className={!sort ? active : idle}
             >
-                Default
+                Predeeterminado
             </Link>
 
             <Link
@@ -34,7 +34,7 @@ export const SortBy = ({ sort }: { sort?: "price" }) => {
                     />
                 </svg>
 
-                By price
+                Por Precio
             </Link>
         </div>
     );
