@@ -68,3 +68,6 @@ export function NavMenu({ categories }: { categories: Category[] }) {
         </nav>
     )
 }
+
+
+
