@@ -68,7 +68,7 @@ export default function ContactoPage() {
             </p>
 
             <span className="mt-6 inline-block font-semibold text-green-600">
-              Número de contacto de la tienda
+              00-00-00-00-00
             </span>
           </div>
 
