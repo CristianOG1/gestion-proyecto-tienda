@@ -82,3 +82,18 @@ docker compose down
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8888`
+
+## Pruebas y calidad del código
+Desde la carpeta `web/`:
+
+```bash
+pnpm test    # pruebas unitarias con Vitest
+pnpm lint    # revisión de código con ESLint
+pnpm build   # compilación de producción
+```
+
+## Flujo de trabajo con Git
+1. Actualiza `main`: `git pull origin main`.
+2. Crea una rama con prefijo según el tipo de cambio: `feature/`, `fix/` o `docs/` (ej. `feature/carrito-compras-zustand`).
+3. Haz commits pequeños con mensajes claros (ej. `fix(web): corregir idioma del layout`).
+4. Sube la rama con `git push -u origin nombre-de-la-rama` y abre un Pull Request hacia `main`.
