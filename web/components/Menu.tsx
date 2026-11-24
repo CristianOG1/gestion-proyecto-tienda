@@ -21,6 +21,7 @@ export function NavMenu({ categories }: { categories: Category[] }) {
           href: `/categories/${c.slug}`,
           label: c.name,
         })),
+        { href: "/contacto", label: "Contacto" },
       ]
     return (
         <nav className="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
